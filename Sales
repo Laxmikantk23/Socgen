@@ -1,0 +1,139 @@
+package com.inventory.controller;
+
+import com.inventory.DTO.SalesOrderDTO;
+import com.inventory.entity.Product;
+import com.inventory.entity.SalesOrder;
+import com.inventory.exception.SalesOrderNotFoundException;
+import com.inventory.service.SalesService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class SalesControllerTest {
+
+    @Mock
+    private SalesService salesService;
+
+    @InjectMocks
+    private SalesController salesController;
+
+    private SalesOrder salesOrder;
+    private SalesOrderDTO salesOrderDTO;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.initMocks(this);
+
+        salesOrder = new SalesOrder();
+        salesOrder.setSalesId(1);
+        salesOrder.setQuantity(5);
+
+        salesOrderDTO = new SalesOrderDTO();
+        salesOrderDTO.setSalesId(1);
+        salesOrderDTO.setQuantity(5);
+    }
+
+    // Test for getAllPurchases (fetch all sales orders)
+    @Test
+    void testGetAllSalesOrders() {
+        when(salesService.getAllSales()).thenReturn(Arrays.asList(salesOrder));
+
+        ResponseEntity<Iterable<SalesOrder>> response = salesController.getAllPurchases();
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, ((Iterable<SalesOrder>) response.getBody()).spliterator().getExactSizeIfKnown());
+    }
+
+    // Test for getAllOrdersByProductId
+    @Test
+    void testGetAllOrdersByProductId() {
+        when(salesService.getAllOrdersByProductId(1)).thenReturn(Arrays.asList(salesOrder));
+
+        ResponseEntity<List<SalesOrder>> response = salesController.getAllOrdersByProductId(1);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+    }
+
+    // Test for getOrderById
+    @Test
+    void testGetOrderById() {
+        when(salesService.getOrderById(1)).thenReturn(Optional.of(salesOrder));
+
+        ResponseEntity<SalesOrder> response = salesController.getOrderById(1);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(salesOrder, response.getBody());
+    }
+
+    // Test for getOrderById with SalesOrderNotFoundException
+    @Test
+    void testGetOrderById_NotFound() {
+        when(salesService.getOrderById(2)).thenReturn(Optional.empty());
+
+        assertThrows(SalesOrderNotFoundException.class, () -> {
+            salesController.getOrderById(2);
+        });
+    }
+
+    // Test for addNewOrder
+    @Test
+    void testAddNewOrder() {
+        when(salesService.addNewOrder(salesOrderDTO)).thenReturn(salesOrder);
+
+        ResponseEntity<SalesOrder> response = salesController.addNewOrder(salesOrderDTO, 1);
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(salesOrder, response.getBody());
+    }
+
+    // Test for updateOrderById
+    @Test
+    void testUpdateOrderById() {
+        when(salesService.getOrderById(1)).thenReturn(Optional.of(salesOrder));
+        when(salesService.updateOrderById(salesOrderDTO, 1)).thenReturn(salesOrder);
+
+        ResponseEntity<SalesOrder> response = salesController.updateOrderById(1, salesOrderDTO);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(salesOrder, response.getBody());
+    }
+
+    // Test for updateOrderStatusById
+    @Test
+    void testUpdateOrderStatusById() {
+        when(salesService.getOrderById(1)).thenReturn(Optional.of(salesOrder));
+        when(salesService.updateOrderStatusById("COMPLETED", 1)).thenReturn(salesOrder);
+
+        ResponseEntity<SalesOrder> response = salesController.updateOrderStatusById("COMPLETED", 1);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(salesOrder, response.getBody());
+    }
+
+    // Test for deleteOrder
+    @Test
+    void testDeleteOrder() {
+        when(salesService.getOrderById(1)).thenReturn(Optional.of(salesOrder));
+        doNothing().when(salesService).deleteOrder(1);
+
+        ResponseEntity<Object> response = salesController.deleteOrder(1);
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+    }
+
+    // Test for getTotalSalesOrder
+    @Test
+    void testGetTotalSalesOrder() {
+        when(salesService.getTotalSalesOrderCount()).thenReturn(10L);
+
+        long totalSalesOrders = salesController.getTotalSalesOrder();
+        assertEquals(10, totalSalesOrders);
+    }
+}
