@@ -1,0 +1,139 @@
+package com.inventory.controller;
+
+import com.inventory.DTO.PurchaseOrderDTO;
+import com.inventory.entity.Product;
+import com.inventory.entity.PurchaseOrder;
+import com.inventory.exception.PurchaseOrderNotFoundException;
+import com.inventory.service.PurchaseService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class PurchaseControllerTest {
+
+    @Mock
+    private PurchaseService purchaseService;
+
+    @InjectMocks
+    private PurchaseController purchaseController;
+
+    private PurchaseOrder purchaseOrder;
+    private PurchaseOrderDTO purchaseOrderDTO;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.initMocks(this);
+
+        purchaseOrder = new PurchaseOrder();
+        purchaseOrder.setPurchaseId(1);
+        purchaseOrder.setQuantity(10);
+
+        purchaseOrderDTO = new PurchaseOrderDTO();
+        purchaseOrderDTO.setPurchaseId(1);
+        purchaseOrderDTO.setQuantity(10);
+    }
+
+    // Test for getAllPurchases
+    @Test
+    void testGetAllPurchases() {
+        when(purchaseService.getAllPurchases()).thenReturn(Arrays.asList(purchaseOrder));
+
+        ResponseEntity<Iterable<PurchaseOrder>> response = purchaseController.getAllPurchases();
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, ((Iterable<PurchaseOrder>) response.getBody()).spliterator().getExactSizeIfKnown());
+    }
+
+    // Test for getAllOrdersByProductId
+    @Test
+    void testGetAllOrdersByProductId() {
+        when(purchaseService.getAllOrdersByProductId(1)).thenReturn(Arrays.asList(purchaseOrder));
+
+        ResponseEntity<List<PurchaseOrder>> response = purchaseController.getAllordersByProductId(1);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+    }
+
+    // Test for getOrderById
+    @Test
+    void testGetOrderById() {
+        when(purchaseService.getOrderById(1)).thenReturn(Optional.of(purchaseOrder));
+
+        ResponseEntity<PurchaseOrder> response = purchaseController.getorderById(1);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(purchaseOrder, response.getBody());
+    }
+
+    // Test for getOrderById with PurchaseOrderNotFoundException
+    @Test
+    void testGetOrderById_NotFound() {
+        when(purchaseService.getOrderById(2)).thenReturn(Optional.empty());
+
+        assertThrows(PurchaseOrderNotFoundException.class, () -> {
+            purchaseController.getorderById(2);
+        });
+    }
+
+    // Test for addNewOrder
+    @Test
+    void testAddNewOrder() {
+        when(purchaseService.addNewOrder(purchaseOrderDTO)).thenReturn(purchaseOrder);
+
+        ResponseEntity<PurchaseOrder> response = purchaseController.addNewOrder(purchaseOrderDTO, 1);
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(purchaseOrder, response.getBody());
+    }
+
+    // Test for updateOrderById
+    @Test
+    void testUpdateOrderById() {
+        when(purchaseService.getOrderById(1)).thenReturn(Optional.of(purchaseOrder));
+        when(purchaseService.updateOrderById(purchaseOrderDTO, 1)).thenReturn(purchaseOrder);
+
+        ResponseEntity<PurchaseOrder> response = purchaseController.updateOrderById(1, purchaseOrderDTO);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(purchaseOrder, response.getBody());
+    }
+
+    // Test for updateOrderStatusById
+    @Test
+    void testUpdateOrderStatusById() {
+        when(purchaseService.getOrderById(1)).thenReturn(Optional.of(purchaseOrder));
+        when(purchaseService.updateOrderStatusById("COMPLETED", 1)).thenReturn(purchaseOrder);
+
+        ResponseEntity<PurchaseOrder> response = purchaseController.updateOrderStatusById("COMPLETED", 1, purchaseOrderDTO);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(purchaseOrder, response.getBody());
+    }
+
+    // Test for deleteOrder
+    @Test
+    void testDeleteOrder() {
+        when(purchaseService.getOrderById(1)).thenReturn(Optional.of(purchaseOrder));
+        doNothing().when(purchaseService).deleteOrder(1);
+
+        ResponseEntity<Object> response = purchaseController.deleteOrder(1);
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+    }
+
+    // Test for getTotalPurchaseOrder
+    @Test
+    void testGetTotalPurchaseOrder() {
+        when(purchaseService.getTotalPurchaseOrderCount()).thenReturn(10L);
+
+        long totalOrders = purchaseController.getTotalPurchaseOrder();
+        assertEquals(10, totalOrders);
+    }
+}
